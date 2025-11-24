@@ -220,14 +220,58 @@ variables:
     {% endif %}
 
 trigger:
-  - trigger: time
-    at: !input alarm_start_time_weekday
+  - trigger: template
     id: weekday_trigger
-    offset: !input offset_from_start_time
-  - trigger: time
-    at: !input alarm_start_time_weekend
+    value_template: >
+      {% set base_entity = !input alarm_start_time_weekday %}
+      {% if base_entity == '' %}
+        false
+      {% else %}
+        {% set base_state = states(base_entity) %}
+        {% if base_state in ['', 'unknown', 'unavailable'] %}
+          false
+        {% else %}
+          {% if base_state | length > 8 %}
+            {% set dt_obj = as_datetime(base_state) %}
+          {% else %}
+            {% set dt_obj = today_at(base_state) %}
+          {% endif %}
+          {% set base_seconds = dt_obj.hour * 3600 + dt_obj.minute * 60 + dt_obj.second %}
+          {% set offset_seconds = as_timedelta(!input offset_from_start_time).total_seconds() | int %}
+          {% set total_seconds = (base_seconds + offset_seconds) % 86400 %}
+          {% set hours = (total_seconds // 3600) | int %}
+          {% set minutes = ((total_seconds % 3600) // 60) | int %}
+          {% set seconds = (total_seconds % 60) | int %}
+          {% set target_time = '%02d:%02d:%02d' | format(hours, minutes, seconds) %}
+          {{ now().strftime('%H:%M:%S') == target_time }}
+        {% endif %}
+      {% endif %}
+  - trigger: template
     id: weekend_trigger
-    offset: !input offset_from_start_time
+    value_template: >
+      {% set base_entity = !input alarm_start_time_weekend %}
+      {% if base_entity == '' %}
+        false
+      {% else %}
+        {% set base_state = states(base_entity) %}
+        {% if base_state in ['', 'unknown', 'unavailable'] %}
+          false
+        {% else %}
+          {% if base_state | length > 8 %}
+            {% set dt_obj = as_datetime(base_state) %}
+          {% else %}
+            {% set dt_obj = today_at(base_state) %}
+          {% endif %}
+          {% set base_seconds = dt_obj.hour * 3600 + dt_obj.minute * 60 + dt_obj.second %}
+          {% set offset_seconds = as_timedelta(!input offset_from_start_time).total_seconds() | int %}
+          {% set total_seconds = (base_seconds + offset_seconds) % 86400 %}
+          {% set hours = (total_seconds // 3600) | int %}
+          {% set minutes = ((total_seconds % 3600) // 60) | int %}
+          {% set seconds = (total_seconds % 60) | int %}
+          {% set target_time = '%02d:%02d:%02d' | format(hours, minutes, seconds) %}
+          {{ now().strftime('%H:%M:%S') == target_time }}
+        {% endif %}
+      {% endif %}
 
 condition:
   - condition: and
