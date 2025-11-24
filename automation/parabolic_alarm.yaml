@@ -242,7 +242,8 @@ condition:
           {% else %}
             {{ trigger.id == 'weekday_trigger' }}
           {% endif %}
-      - !input conditions
+      - condition: and
+        conditions: !input conditions
 
 action:
   - choose:
